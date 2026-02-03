@@ -140,25 +140,68 @@ function syoka_handle_create_posts() {
         return;
     }
 
+    $selected = array();
     foreach ( $items as $encoded ) {
-        $decoded = json_decode( base64_decode( $encoded ), true );
-        if ( ! is_array( $decoded ) ) {
-            syoka_add_notice( 'error', __( '記事データの解析に失敗しました。', 'syoka' ) );
+        $encoded = sanitize_text_field( $encoded );
+        if ( '' === $encoded || false === strpos( $encoded, '|' ) ) {
+            continue;
+        }
+        list( $feed_url, $hash ) = explode( '|', $encoded, 2 );
+        $feed_url = esc_url_raw( rawurldecode( $feed_url ) );
+        $hash = sanitize_text_field( $hash );
+        if ( empty( $feed_url ) || empty( $hash ) ) {
+            continue;
+        }
+        if ( ! isset( $selected[ $feed_url ] ) ) {
+            $selected[ $feed_url ] = array();
+        }
+        $selected[ $feed_url ][] = $hash;
+    }
+
+    if ( empty( $selected ) ) {
+        syoka_add_notice( 'warning', __( '選択された記事がありません。', 'syoka' ) );
+        return;
+    }
+
+    foreach ( $selected as $feed_url => $hashes ) {
+        $hashes = array_values( array_unique( $hashes ) );
+
+        $feed_items = syoka_get_feed_items( $feed_url, true );
+        if ( is_wp_error( $feed_items ) ) {
+            syoka_add_notice(
+                'error',
+                esc_html( sprintf( __( 'RSS取得に失敗しました (%1$s): %2$s', 'syoka' ), $feed_url, $feed_items->get_error_message() ) )
+            );
             continue;
         }
 
-        $result = syoka_create_draft_post( $decoded );
-        if ( $result['status'] === 'success' ) {
-            $edit_link = get_edit_post_link( $result['post_id'], '' );
-            $message = __( '下書きを作成しました。', 'syoka' );
-            if ( $edit_link ) {
-                $message .= ' <a href="' . esc_url( $edit_link ) . '">' . esc_html__( '編集', 'syoka' ) . '</a>';
+        $item_map = array();
+        foreach ( $feed_items as $feed_item ) {
+            if ( empty( $feed_item['item_hash'] ) ) {
+                continue;
             }
-            syoka_add_notice( 'success', $message );
-        } elseif ( $result['status'] === 'duplicate' ) {
-            syoka_add_notice( 'warning', __( '既存投稿があるためスキップしました。', 'syoka' ) );
-        } else {
-            syoka_add_notice( 'error', sprintf( __( '作成に失敗しました: %s', 'syoka' ), esc_html( $result['message'] ) ) );
+            $item_map[ $feed_item['item_hash'] ] = $feed_item;
+        }
+
+        foreach ( $hashes as $hash ) {
+            if ( ! isset( $item_map[ $hash ] ) ) {
+                syoka_add_notice( 'error', __( '選択された記事が見つかりませんでした。', 'syoka' ) );
+                continue;
+            }
+
+            $result = syoka_create_draft_post( $item_map[ $hash ] );
+            if ( $result['status'] === 'success' ) {
+                $edit_link = get_edit_post_link( $result['post_id'], '' );
+                $message = __( '下書きを作成しました。', 'syoka' );
+                if ( $edit_link ) {
+                    $message .= ' <a href="' . esc_url( $edit_link ) . '">' . esc_html__( '編集', 'syoka' ) . '</a>';
+                }
+                syoka_add_notice( 'success', $message );
+            } elseif ( $result['status'] === 'duplicate' ) {
+                syoka_add_notice( 'warning', __( '既存投稿があるためスキップしました。', 'syoka' ) );
+            } else {
+                syoka_add_notice( 'error', sprintf( __( '作成に失敗しました: %s', 'syoka' ), esc_html( $result['message'] ) ) );
+            }
         }
     }
 }
@@ -324,14 +367,14 @@ function syoka_render_candidates_page() {
                                 <?php foreach ( $items as $item ) : ?>
                                     <?php
                                     $is_duplicate = syoka_is_duplicate( $item['guid'], $item['link'] );
-                                    $encoded = base64_encode( wp_json_encode( $item ) );
+                                    $item_hash = isset( $item['item_hash'] ) ? $item['item_hash'] : '';
                                     ?>
                                     <tr>
                                         <td>
-                                            <?php if ( $is_duplicate ) : ?>
+                                            <?php if ( $is_duplicate || empty( $item_hash ) ) : ?>
                                                 <input type="checkbox" disabled />
                                             <?php else : ?>
-                                                <input type="checkbox" name="syoka_items[]" value="<?php echo esc_attr( $encoded ); ?>" />
+                                                <input type="checkbox" name="syoka_items[]" value="<?php echo esc_attr( rawurlencode( $feed['url'] ) . '|' . $item_hash ); ?>" />
                                             <?php endif; ?>
                                         </td>
                                         <td>

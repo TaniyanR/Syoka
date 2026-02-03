@@ -41,6 +41,7 @@ function syoka_get_feed_items( $feed_url, $force_refresh = false ) {
         $excerpt = syoka_build_excerpt( $description, $content );
 
         $image_url = syoka_extract_image_url( $item, $content, $description );
+        $item_hash = syoka_generate_item_hash( $guid, $link, $title, $date );
 
         $normalized[] = array(
             'guid'        => $guid,
@@ -50,12 +51,18 @@ function syoka_get_feed_items( $feed_url, $force_refresh = false ) {
             'excerpt'     => $excerpt,
             'image_url'   => $image_url,
             'feed_url'    => $feed_url,
+            'item_hash'   => $item_hash,
         );
     }
 
     set_transient( $transient_key, $normalized, SYOKA_CACHE_TTL );
 
     return $normalized;
+}
+
+function syoka_generate_item_hash( $guid, $link, $title, $date ) {
+    $primary = ! empty( $guid ) ? $guid : $link;
+    return md5( $primary . '|' . $title . '|' . $date );
 }
 
 function syoka_build_excerpt( $description, $content ) {
