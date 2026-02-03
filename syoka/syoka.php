@@ -15,7 +15,7 @@ define( 'SYOKA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SYOKA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 define( 'SYOKA_FEEDS_OPTION', 'syoka_feeds' );
-define( 'SYOKA_NOTICE_OPTION', 'syoka_admin_notices' );
+define( 'SYOKA_NOTICE_OPTION', 'syoka_notices' );
 
 define( 'SYOKA_FEED_LIMIT', 10 );
 define( 'SYOKA_ITEMS_PER_FEED', 5 );

@@ -5,23 +5,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 function syoka_is_duplicate( $guid, $link ) {
-    $meta_query = array( 'relation' => 'OR' );
-
     if ( ! empty( $guid ) ) {
-        $meta_query[] = array(
-            'key'   => '_syoka_source_guid',
-            'value' => $guid,
+        $meta_query = array(
+            array(
+                'key'   => '_syoka_source_guid',
+                'value' => $guid,
+            ),
         );
-    }
-
-    if ( ! empty( $link ) ) {
-        $meta_query[] = array(
-            'key'   => '_syoka_source_url',
-            'value' => $link,
+    } elseif ( ! empty( $link ) ) {
+        $meta_query = array(
+            array(
+                'key'   => '_syoka_source_url',
+                'value' => $link,
+            ),
         );
-    }
-
-    if ( count( $meta_query ) === 1 ) {
+    } else {
         return false;
     }
 
@@ -113,7 +111,7 @@ function syoka_create_draft_post( $item ) {
     }
 
     if ( ! $image_set ) {
-        $placeholder = '<div style="border:2px dashed #ccc; padding:12px; margin:0 0 16px; text-align:center; font-weight:700;">ここに画像が入ります（後で手動でアイキャッチを設定してください）</div>';
+        $placeholder = "<div style=\"border:2px dashed #ccc; padding:12px; margin:0 0 16px; text-align:center; font-weight:700;\">\nここに画像が入ります（後で手動でアイキャッチを設定してください）\n</div>";
         $updated_content = $placeholder . "\n" . get_post_field( 'post_content', $post_id );
         wp_update_post(
             array(
