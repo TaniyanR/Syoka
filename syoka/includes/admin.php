@@ -45,20 +45,26 @@ function syoka_handle_admin_actions() {
     if ( isset( $_POST['syoka_action'] ) && $_POST['syoka_action'] === 'save_feeds' ) {
         check_admin_referer( 'syoka_save_feeds' );
         syoka_handle_save_feeds();
+        wp_safe_redirect( admin_url( 'admin.php?page=syoka_feeds' ) );
+        exit;
     }
 
     if ( isset( $_GET['syoka_action'] ) && $_GET['syoka_action'] === 'refresh_feed' ) {
         check_admin_referer( 'syoka_refresh_feed' );
-        $feed_url = isset( $_GET['feed_url'] ) ? esc_url_raw( wp_unslash( $_GET['feed_url'] ) ) : '';
+        $feed_url = isset( $_GET['feed_url'] ) ? esc_url_raw( rawurldecode( wp_unslash( $_GET['feed_url'] ) ) ) : '';
         if ( ! empty( $feed_url ) ) {
             syoka_clear_feed_cache( $feed_url );
             syoka_add_notice( 'success', __( 'キャッシュを削除して再取得します。', 'syoka' ) );
         }
+        wp_safe_redirect( admin_url( 'admin.php?page=syoka_candidates' ) );
+        exit;
     }
 
     if ( isset( $_POST['syoka_action'] ) && $_POST['syoka_action'] === 'create_posts' ) {
         check_admin_referer( 'syoka_create_posts' );
         syoka_handle_create_posts();
+        wp_safe_redirect( admin_url( 'admin.php?page=syoka_candidates' ) );
+        exit;
     }
 }
 
@@ -276,7 +282,10 @@ function syoka_render_candidates_page() {
                     <?php
                     $items = syoka_get_feed_items( $feed['url'] );
                     if ( is_wp_error( $items ) ) {
-                        syoka_add_notice( 'error', sprintf( __( 'RSS取得に失敗しました: %s', 'syoka' ), esc_html( $items->get_error_message() ) ) );
+                        printf(
+                            '<div class="notice notice-error"><p>%s</p></div>',
+                            esc_html( sprintf( __( 'RSS取得に失敗しました (%1$s): %2$s', 'syoka' ), $feed['url'], $items->get_error_message() ) )
+                        );
                         $items = array();
                     }
                     ?>
