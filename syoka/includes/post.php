@@ -41,6 +41,7 @@ function syoka_is_duplicate( $guid, $link ) {
 function syoka_create_draft_post( $item ) {
     $guid = isset( $item['guid'] ) ? sanitize_text_field( $item['guid'] ) : '';
     $link = isset( $item['link'] ) ? esc_url_raw( $item['link'] ) : '';
+    $feed_url = isset( $item['feed_url'] ) ? esc_url_raw( $item['feed_url'] ) : '';
 
     if ( syoka_is_duplicate( $guid, $link ) ) {
         return array(
@@ -50,23 +51,27 @@ function syoka_create_draft_post( $item ) {
     }
 
     $title = isset( $item['title'] ) ? sanitize_text_field( $item['title'] ) : '';
-    $excerpt = isset( $item['excerpt'] ) ? wp_kses_post( $item['excerpt'] ) : '';
+    $excerpt = isset( $item['excerpt'] ) ? sanitize_text_field( $item['excerpt'] ) : '';
 
     $content_parts = array();
     if ( ! empty( $excerpt ) ) {
-        $content_parts[] = $excerpt;
+        $content_parts[] = sprintf( '<p>%s</p>', esc_html( $excerpt ) );
     }
 
     if ( ! empty( $link ) ) {
         $content_parts[] = sprintf(
             '<p><a href="%1$s" target="_blank" rel="noopener">%2$s</a></p>',
             esc_url( $link ),
-            esc_html__( '元記事はこちら', 'syoka' )
+            esc_html__( '元記事を読む', 'syoka' )
         );
+    }
+
+    $source_url = ! empty( $feed_url ) ? $feed_url : $link;
+    if ( ! empty( $source_url ) ) {
         $content_parts[] = sprintf(
             '<p>%1$s: <a href="%2$s" target="_blank" rel="noopener">%2$s</a></p>',
             esc_html__( '出典', 'syoka' ),
-            esc_url( $link )
+            esc_url( $source_url )
         );
     }
 

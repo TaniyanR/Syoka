@@ -38,13 +38,7 @@ function syoka_get_feed_items( $feed_url, $force_refresh = false ) {
         $date = $item->get_date( 'Y-m-d H:i' );
         $content = $item->get_content();
         $description = $item->get_description();
-        $excerpt = '';
-
-        if ( ! empty( $description ) ) {
-            $excerpt = wp_kses_post( $description );
-        } elseif ( ! empty( $content ) ) {
-            $excerpt = wp_kses_post( $content );
-        }
+        $excerpt = syoka_build_excerpt( $description, $content );
 
         $image_url = syoka_extract_image_url( $item, $content, $description );
 
@@ -55,12 +49,42 @@ function syoka_get_feed_items( $feed_url, $force_refresh = false ) {
             'date'        => $date,
             'excerpt'     => $excerpt,
             'image_url'   => $image_url,
+            'feed_url'    => $feed_url,
         );
     }
 
     set_transient( $transient_key, $normalized, SYOKA_CACHE_TTL );
 
     return $normalized;
+}
+
+function syoka_build_excerpt( $description, $content ) {
+    $text = '';
+    if ( ! empty( $description ) ) {
+        $text = $description;
+    } elseif ( ! empty( $content ) ) {
+        $text = $content;
+    }
+
+    $text = wp_strip_all_tags( (string) $text );
+    $text = html_entity_decode( $text, ENT_QUOTES, get_bloginfo( 'charset' ) );
+    $text = preg_replace( '/\s+/u', ' ', $text );
+    $text = trim( $text );
+
+    if ( '' === $text ) {
+        return '';
+    }
+
+    $limit = 240;
+    if ( function_exists( 'mb_substr' ) ) {
+        if ( mb_strlen( $text ) > $limit ) {
+            $text = mb_substr( $text, 0, $limit );
+        }
+    } elseif ( strlen( $text ) > $limit ) {
+        $text = substr( $text, 0, $limit );
+    }
+
+    return $text;
 }
 
 function syoka_extract_image_url( $item, $content, $description ) {
