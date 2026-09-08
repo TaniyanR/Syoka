@@ -4,7 +4,14 @@ declare(strict_types=1);
 require_once __DIR__ . '/app.php';
 
 if (syoka_is_installed()) {
-    syoka_redirect('login.php');
+    try {
+        $userCount = (int) syoka_db()->query('SELECT COUNT(*) FROM users')->fetchColumn();
+        if ($userCount > 0) {
+            syoka_redirect('login.php');
+        }
+    } catch (Throwable $e) {
+        // 初期設定が途中で止まった場合は、この画面から再開できるようにする。
+    }
 }
 
 $error = '';
@@ -23,6 +30,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         try {
             syoka_install_schema();
+            $userCount = (int) syoka_db()->query('SELECT COUNT(*) FROM users')->fetchColumn();
+            if ($userCount > 0) {
+                throw new RuntimeException('管理ユーザーはすでに作成されています。');
+            }
             $stmt = syoka_db()->prepare('INSERT INTO users(username, password_hash, created_at) VALUES(?,?,?)');
             $stmt->execute([$username, password_hash($password, PASSWORD_DEFAULT), syoka_now()]);
             syoka_flash('success', 'Syokaの初期設定が完了しました。ログインしてください。');
@@ -59,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </label>
         <button type="submit" class="button primary">Syokaをセットアップ</button>
     </form>
-    <p class="help">SQLiteを自動作成します。PHP 8.1+ / PDO_SQLite / cURL / SimpleXML が必要です。</p>
+    <p class="help">SQLiteを自動作成します。PHP 8.1+ / PDO_SQLite / cURL / SimpleXML / mbstring が必要です。</p>
 </main>
 </body>
 </html>
