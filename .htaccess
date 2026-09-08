@@ -1,0 +1,8 @@
+Options -Indexes
+
+<FilesMatch "^(app\.php|\.gitignore|README\.md)$">
+    Require all denied
+</FilesMatch>
+
+RewriteEngine On
+RewriteRule ^data(?:/|$) - [F,L]
